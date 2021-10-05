@@ -1,5 +1,5 @@
 clear; clc; close all;
-PROVAPROVAPROVA
+
 %% Stability region
 alpha = linspace(0,2*pi,1e3)';
 h = zeros(length(alpha),1);
