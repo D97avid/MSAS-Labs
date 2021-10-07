@@ -9,7 +9,12 @@ f = @(x) cos(x) - x;
 a = 0; b = pi; tol = 1e-8;
 check = f(a)*f(b);
 
-N = 1e3;
+figure()
+xxx = linspace(-5,5,1e2);
+plot(xxx,f(xxx))
+grid on
+
+N = 1e5;
 t = ones(N,1);
 
 % Bisection Method
@@ -45,29 +50,67 @@ clearvars; close all; clc;
 % we don't have to impose an error tolerance but stop the iterations after
 % a number of steps and compare the accuracy. we decide a priori depending
 % on the newton method 
-f = @(xx) [xx(1)^2 - xx(1) - xx(2); xx(1)^2/16 + xx(2)^2 - 1];
+f = @(xx) [xx(1)^2 - xx(1) - xx(2); (xx(1)^2)/16 + xx(2)^2 - 1];
+
+figure()
+xxx = linspace(-3,3,1e2);
+plot(xxx,(xxx.^2 - xxx) , xxx,(-xxx.^2 ./16 + 1))
+grid on
+
 invJ_an = @(xx) inv([2*xx(1) - 1, -1; 1/8 * xx(1), 2*xx(2)]);
+epsilon = 1e-3;
+% eps = @(xx) max(sqrt(epsilon),max(sqrt(epsilon)*abs(xx)));
+% % H = diag([eps,eps]);
+% invJ_fd = @(xx) inv(eps(xx)^-1 .* [f(xx+[eps(xx); 0])-f(xx), f(xx+[0; eps(xx)])-f(xx)]);
+% invJ_cd = @(xx) inv((2*eps(xx))^-1 .* [f(xx+[eps(xx); 0])-f(xx-[eps(xx); 0]), f(xx+[0; eps(xx)])-f(xx-[0; eps(xx)])]);
+
+invJ_fd = @(xx) inv(epsilon^-1 .* [f(xx+[epsilon; 0])-f(xx), f(xx+[0; epsilon])-f(xx)]);
+invJ_cd = @(xx) inv((2*epsilon)^-1 .* [f(xx+[epsilon; 0])-f(xx-[epsilon; 0]), f(xx+[0; epsilon])-f(xx-[0; epsilon])]);
 
 N = 10;
-x = ones(2,N);
-F_an = x; F_an(:,1) = f([1;1]); F_fd = F_an;
-
-tic
-for i = 1:N-1    
-    x(:,i+1) = x(:,i) - invJ_an(x(:,i)) * f(x(:,i));
-    F_an(:,i+1) = f(x(:, i+1));
+X0 = [[-5;5],[5;5]];
+for j = 1:2
+    x0 = X0(:,j);
+    x = [x0, zeros(2,N-1)]; x_an = x; x_fd = x; x_cd = x;
+    F_an = x; F_an(:,1) = f([1;1]); F_fd = F_an; F_cd = F_an;
+    
+    % Analytical
+    tic
+    for i = 1:N-1    
+        x_an(:,i+1) = x_an(:,i) - invJ_an(x_an(:,i)) * f(x_an(:,i));
+        F_an(:,i+1) = f(x_an(:, i+1));
+    end
+    t_an = toc;
+    
+    % Forward differences
+    tic
+    for i = 1:N-1
+        x_fd(:,i+1) = x_fd(:,i) - invJ_fd(x_fd(:,i)) * f(x_fd(:,i));
+        F_fd(:,i+1) = f(x_fd(:, i+1));
+    end
+    t_fd = toc;
+    
+    % Central differences
+    tic
+    for i = 1:N-1
+        x_cd(:,i+1) = x_cd(:,i) - invJ_cd(x_cd(:,i)) * f(x_cd(:,i));
+        F_cd(:,i+1) = f(x_cd(:, i+1));
+    end
+    t_cd = toc;
+    
+    figure()
+    subplot(2,1,1)
+    plot(1:N,F_an(1,:),'-o', 1:N,F_fd(1,:),'-o', 1:N,F_cd(1,:),'-o')
+    grid on
+    legend('Analytical solution','Forward differences','Central differences')
+    subplot(2,1,2)
+    plot(1:N,F_an(2,:),'-o', 1:N,F_fd(2,:),'-o', 1:N,F_cd(2,:),'-o')
+    grid on
+    legend('Analytical solution','Forward differences','Central differences')
+    
+    RESULTS = {'Method:', 'Computational time:','Error1:','Error2:','x1:','x2:'; 'Analytical',t_an,abs(F_an(1,end)),abs(F_an(2,end)),x_an(1,end),x_an(2,end); 'Forward Differences',t_fd,abs(F_fd(1,end)),abs(F_fd(2,end)),x_fd(1,end),x_fd(2,end); 'Central Differences',t_cd,abs(F_cd(1,end)),abs(F_cd(2,end)),x_cd(1,end),x_cd(2,end)};
+    disp(RESULTS);
 end
-t_an = toc;
-
-tic
-for i = 1:N-1    
-    x(:,i+1) = x(:,i) - invJ_an(x(:,i)) * f(x(:,i));
-    F_fd(:,i+1) = f(x(:, i+1));
-end
-t_fd = toc;
-
-RESULTS = {'Method:', 'Computational time:','Error:'; 'Analytical',t_an,abs(F_an(end)); 'Finite Differencies',t_fd,abs(F_fd(end))};
-disp(RESULTS);
 %% Ex 3
 clearvars; close all; clc;
 % gli input della funzione devono avere la stessa forma delle ode di matlab
