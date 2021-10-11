@@ -111,21 +111,69 @@ for j = 1:2
     RESULTS = {'Method:', 'Computational time:','Error1:','Error2:','x1:','x2:'; 'Analytical',t_an,abs(F_an(1,end)),abs(F_an(2,end)),x_an(1,end),x_an(2,end); 'Forward Differences',t_fd,abs(F_fd(1,end)),abs(F_fd(2,end)),x_fd(1,end),x_fd(2,end); 'Central Differences',t_cd,abs(F_cd(1,end)),abs(F_cd(2,end)),x_cd(1,end),x_cd(2,end)};
     disp(RESULTS);
 end
+
 %% Ex 3
 clearvars; close all; clc;
-% gli input della funzione devono avere la stessa forma delle ode di matlab
+odefun = @(t,x) x - t^2 + 1; 
+x_an = @(tt) tt.^2 + 2*tt + 1 - 0.5*exp(tt);
 x0 = 0.5;
-x_analytic = @(t) t^2 + 2*t + 1 - 0.5*e^t;
+tspan = linspace(0,2,1e1)';
+x_RK2 = zeros(length(tspan),4);
+x_RK4 = x_RK2;
+H = [0.5, 0.2, 0.05, 0.01];
+
+for i = 1:4
+    [~,x_RK2(:,i)] = RK2(odefun,tspan,x0,H(i));
+    [~,x_RK4(:,i)] = RK4(odefun,tspan,x0,H(i));
+end
+
+figure()
+plot(tspan,x_an(tspan),'LineWidth',3)
+hold on
+plot(tspan,x_RK2(:,1), tspan,x_RK2(:,2), tspan,x_RK2(:,3), tspan,x_RK2(:,4))
+hold on
+plot(tspan,x_RK4(:,1), tspan,x_RK4(:,2), tspan,x_RK4(:,3), tspan,x_RK4(:,4))
+grid on
+legend("Analytic","RK2_{h_1}","RK2_{h_2}","RK2_{h_3}","RK2_{h_4}",...
+    "RK4_{h_1}","RK4_{h_2}","RK4_{h_3}","RK4_{h_4}")
 
 %% Ex 4
 clearvars; close all; clc;
 A = @(aa) [0 1; -1 2*cos(aa)];
-alpha = linspace(0,2*pi,1e3);
-lambda = zeros(size(alpha));
+alpha = linspace(0,pi,1e3);
+h_RK2 = zeros(length(alpha),1);
+h_RK4 = h_RK2;
+lambda = zeros(length(alpha),2);
+x0 = 10;
+
+coeff_a = [1;1]; coeff_b = [1, 0 ; 0.5, 0.5]; % Heun's method
+F_RK2 = @(hh,aa) eye(2) + coeff_a(2)*hh*(coeff_b(2,1)*A(aa)+coeff_b(2,2)*A(aa)+coeff_b(1,1)*coeff_b(2,2)*hh*A(aa)^2);
+F_RK4 = @(hh,aa) eye(2) + hh/6 * (6*A(aa) + 3*hh*A(aa)^2 + hh^2*A(aa)^3 + hh^3/4*A(aa)^4);
+
+options = optimoptions('fsolve','Display','none');
+h_RK2_pi = fsolve(@(hh) (max(abs(eig(F_RK2(hh,pi)))) - 1),x0,options);
+h_RK4_pi = fsolve(@(hh) (max(abs(eig(F_RK4(hh,pi)))) - 1),x0,options);
 
 for i = 1:length(alpha)
+    h_RK2(i) = fsolve(@(hh) (max(abs(eig(F_RK2(hh,alpha(i))))) - 1),x0,options);
+    h_RK4(i) = fsolve(@(hh) (max(abs(eig(F_RK4(hh,alpha(i))))) - 1),x0,options);
     lambda(i,:) = eig(A(alpha(i)))';
 end
+
+figure()
+plot(real(h_RK2.*lambda),imag(h_RK2.*lambda))
+hold on
+plot(real(h_RK4.*lambda),imag(h_RK4.*lambda))
+title("Stability region")
+grid on
+axis equal
+
+% Ex. 3 data
+H = [0.5, 0.2, 0.05, 0.01];
+lambda_3 = 1;
+
+hold on
+plot(real(lambda_3.*H),imag(lambda_3.*H),'o')
 
 
 %% Ex 5
@@ -206,5 +254,34 @@ while abs(b-a) > tol && funA*funB < 0
         funB = funC;
     end
     x = [x;c];
+end
+end
+
+function [tspan,x] = RK2(odefun,tspan,x0,h)
+% a = [1; 1];
+% b = [1, 0; 1/2, 1/2];
+x = zeros(size(tspan));
+x(1) = x0;
+
+for i = 1:length(tspan)-1
+    k1 = odefun(tspan(i),x(i));
+    k2 = odefun(tspan(i)+h,x(i)+h*k1);
+    x(i+1) = x(i) + h/2 * (k1 + k2);
+end
+end
+
+
+function [tspan,x] = RK4(odefun,tspan,x0,h)
+% a = [0.5; 0.5; 1; 1];
+% b = [0.5, 0, 0, 0; 0, 0.5, 0, 0; 0, 0, 1, 0; 1/6, 1/3, 1/3, 1/6];
+x = zeros(size(tspan));
+x(1) = x0;
+
+for i = 1:length(tspan)-1
+    k1 = odefun(tspan(i),x(i));
+    k2 = odefun(tspan(i)+h/2,x(i)+h/2*k1);
+    k3 = odefun(tspan(i)+h/2,x(i)+h/2*k2);
+    k4 = odefun(tspan(i)+h,  x(i)+h*k3);
+    x(i+1) = x(i) + h/6 * (k1 + 2*k2 + 2*k3 + k4);
 end
 end
