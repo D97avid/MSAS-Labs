@@ -140,7 +140,7 @@ legend("Analytic","RK2_{h_1}","RK2_{h_2}","RK2_{h_3}","RK2_{h_4}",...
 %% Ex 4
 clearvars; close all; clc;
 A = @(aa) [0 1; -1 2*cos(aa)];
-alpha = linspace(0,pi,1e3);
+alpha = linspace(0,pi,1e4);
 h_RK2 = zeros(length(alpha),1);
 h_RK4 = h_RK2;
 lambda = zeros(length(alpha),2);
@@ -158,12 +158,18 @@ for i = 1:length(alpha)
     h_RK2(i) = fsolve(@(hh) (max(abs(eig(F_RK2(hh,alpha(i))))) - 1),x0,options);
     h_RK4(i) = fsolve(@(hh) (max(abs(eig(F_RK4(hh,alpha(i))))) - 1),x0,options);
     lambda(i,:) = eig(A(alpha(i)))';
+    if h_RK2(i) < 0
+        h_RK2(i) = 0;
+    end
+    if h_RK4(i) < 0
+        h_RK4(i) = 0;
+    end
 end
 
 figure()
-plot(real(h_RK2.*lambda),imag(h_RK2.*lambda))
+plot(real(h_RK2.*lambda),imag(h_RK2.*lambda),'o')
 hold on
-plot(real(h_RK4.*lambda),imag(h_RK4.*lambda))
+plot(real(h_RK4.*lambda),imag(h_RK4.*lambda),'o')
 title("Stability region")
 grid on
 axis equal
@@ -175,10 +181,46 @@ lambda_3 = 1;
 hold on
 plot(real(lambda_3.*H),imag(lambda_3.*H),'o')
 
-
 %% Ex 5
 clearvars; close all; clc;
+A = @(aa) [0 1; -1 2*cos(aa)];
+x0 = [1,1]';
+h0 = 0;
+alpha = linspace(0,pi,1e4);
+tol = [1e-3, 1e-4, 1e-5, 1e-6];
 
+x_an = @(t,aa) expm(A(aa)*t)*x0;
+odefun = @(t,x,aa) A(aa)*x;
+
+x_an_end = zeros(2,length(alpha));
+x_RK1_end = x_an_end;
+options = optimoptions('fsolve','Display','none');
+h = zeros(length(alpha),4);
+
+for j = 1:4
+    for i = 1:length(alpha)
+        x_an_end(:,i) = x_an(1,alpha(i))';
+        h(i,j) = fsolve(@(hh) norm(x_an_end(:,i)-(eye(2)+hh*A(alpha(i)))^(1/hh)*x0,"inf") - tol(j), h0,options);
+        lambda(i,:) = eig(A(alpha(i)))';
+        if h(i,j) <0
+            h(i,j) = NaN;
+        end
+    end
+end
+
+figure()
+plot(real(h(:,1).*lambda),imag(h(:,1).*lambda),'o')
+hold on
+plot(real(h(:,2).*lambda),imag(h(:,2).*lambda),'o')
+hold on
+plot(real(h(:,3).*lambda),imag(h(:,3).*lambda),'o')
+hold on
+plot(real(h(:,4).*lambda),imag(h(:,4).*lambda),'o')
+hold on
+title("Stability region")
+legend('tol = 1e-3','tol = 1e-4','tol = 1e-5','tol = 1e-6')
+grid on
+axis equal
 
 %% Ex 6
 clearvars; close all; clc;
@@ -283,5 +325,15 @@ for i = 1:length(tspan)-1
     k3 = odefun(tspan(i)+h/2,x(i)+h/2*k2);
     k4 = odefun(tspan(i)+h,  x(i)+h*k3);
     x(i+1) = x(i) + h/6 * (k1 + 2*k2 + 2*k3 + k4);
+end
+end
+
+function [tspan,x] = FE(A,tspan,x0,h)
+% fun = A*x
+x = zeros(size(tspan));
+x(1) = x0;
+
+for i = 1:length(tspan)-1
+    x(i+1) = (eye(2) + h*A) *x(i);
 end
 end
