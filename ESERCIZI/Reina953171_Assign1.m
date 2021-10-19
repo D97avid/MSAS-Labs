@@ -246,12 +246,10 @@ F_RK1 = @(hh,aa) eye(2)+hh*A(aa);
 tic
 for j = 1:4
     for i = 1:length(alpha)
-        [h_RK1(i,j),~,~,out] = fzero(@(hh) norm(x_an_end(:,i)-(F_RK1(hh,alpha(i)))^(1/hh)*x0,"inf") - tol(j),5*tol(j),options);
-        if h_RK1(i,j) <0
-            h_RK1(i,j) = NaN;
-        end
+        h_RK1(i,j) = fzero(@(hh) norm(x_an_end(:,i)-(F_RK1(hh,alpha(i)))^(1/hh)*x0,"inf") - tol(j),5*tol(j),options);
     end
 end
+%h_RK1 = 1./round(1./h_RK1);
 t_RK1 = toc;
 
 figure()
@@ -277,10 +275,7 @@ x_RK2_end = zeros(2,length(alpha));
 tic
 for j = 1:4
     for i = 1:length(alpha)
-        [h_RK2(i,j),~,~,out] = fzero(@(hh) norm(x_an_end(:,i)-(F_RK2(hh,alpha(i)))^(1/hh)*x0,"inf") - tol(j),0.015,options);
-        if h_RK2(i,j) <0
-            h_RK2(i,j) = NaN;
-        end
+        h_RK2(i,j) = fzero(@(hh) norm(x_an_end(:,i)-(F_RK2(hh,alpha(i)))^(1/hh)*x0,"inf") - tol(j),0.015,options);
     end
 end
 t_RK2 = toc;
@@ -307,10 +302,7 @@ x_RK4_end = zeros(2,length(alpha));
 tic
 for j = 1:4
     for i = 1:length(alpha)
-        [h_RK4(i,j),~,~,out] = fzero(@(hh) norm(x_an_end(:,i)-(F_RK4(hh,alpha(i)))^(1/hh)*x0,"inf") - tol(j),0.5,options);
-        if h_RK4(i,j) <0
-            h_RK4(i,j) = NaN;
-        end
+        h_RK4(i,j) = fzero(@(hh) norm(x_an_end(:,i)-(F_RK4(hh,alpha(i)))^(1/hh)*x0,"inf") - tol(j),0.5,options);
     end
 end
 t_RK4 = toc;
@@ -332,17 +324,17 @@ axis equal
 fprintf("RK4 done\n")
 
 % func evaluation vs tol (alpha = pi -> alpha(51))
-f_eval_RK1 = zeros(1,4); f_eval_RK2 = zeros(1,4); f_eval_RK4 = zeros(1,4); h_RK1_pi = h_RK1(51,:);
+f_eval_RK1 = zeros(1,4); f_eval_RK2 = zeros(1,4); f_eval_RK4 = zeros(1,4); 
+h_RK1_pi = h_RK1(51,:);
 h_RK2_pi = h_RK2(51,:);
 h_RK4_pi = h_RK4(51,:);
-x0 = [1,1]';
-odefun = @(t,x) A(pi)*x;
 
 for i = 1:4
-    [~,~,f_eval_RK1(i)] = RK1(odefun,0:h_RK1_pi(i):1,x0,h_RK1_pi(i));
-    [~,~,f_eval_RK2(i)] = RK2(odefun,0:h_RK2_pi(i):1,x0,h_RK2_pi(i));
-    [~,~,f_eval_RK4(i)] = RK4(odefun,0:h_RK4_pi(i):1,x0,h_RK4_pi(i));
+    f_eval_RK1(i) = 1/h_RK1_pi(i);
+    f_eval_RK2(i) = 2/h_RK2_pi(i);
+    f_eval_RK4(i) = 4/h_RK4_pi(i);
 end
+
 
 figure()
 loglog(tol,f_eval_RK1(end,:),'-bo',"LineWidth",1);
@@ -451,9 +443,18 @@ end
 [~,x_RK4] = RK4(odefun,tspan,x0,h);
 [~,x_BI2] = BI2(B,tspan,x0,h,theta);
 
+% error
+errorRK4 = abs(x_an - x_RK4);
+errorBI2 = abs(x_an - x_BI2);
+
 % h-lambda plane
 lambda = eig(B);
 load('lambda_A'); load('h_BI2'); save('h_RK4');
+
+figure()
+plot(tspan,errorBI2(1,:), tspan,errorBI2(2,:))
+grid on
+
 
 figure()
 plot(real(h_RK4.*lambda_A),imag(h_RK4.*lambda_A),'r-')
