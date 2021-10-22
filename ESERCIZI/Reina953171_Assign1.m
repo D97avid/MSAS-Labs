@@ -52,9 +52,10 @@ RESULTS = {'Method:', 'Computational time:', 'Function evaluations:','Iterations
            'Secant Method',         t_SM, f_eval_SM, iter_SM, x_SM(end); ...
            'Regula Falsi Method',   t_RFM,f_eval_RFM,iter_RFM,x_RFM(end)};
 disp(RESULTS);
-
+format short
 %% Ex 2
 clearvars; close all; clc;
+format long
 
 % Data
 f = @(xx) [xx(1)^2 - xx(1) - xx(2); ...     % given function
@@ -76,7 +77,7 @@ invJ_cd = @(xx,x0) inv([(f(xx+[epsilon(x0(1)); 0])-f(xx-[epsilon(x0(1)); 0]))/2/
 
 % Initialization
 N = 1e4;                    % Number of repetitions to obtain an average computational time value 
-iter = 3;                   % number of iterations      
+iter = 5;                   % number of iterations      
 err_an = zeros(2,iter,2);   % vector of absolute error of analytic solution
 err_fd = err_an;            % vector of absolute error of FD solution
 err_cd = err_an;            % vector of absolute error of CD solution
@@ -115,15 +116,9 @@ for j = 1:2
 end
 
 % Find the minimum error between the three methods for each zero
-[~,kA_1] = min([err_an(1,end,1),err_fd(1,end,1),err_cd(1,end,1)]);
-[~,kA_2] = min([err_an(2,end,1),err_fd(2,end,1),err_cd(2,end,1)]);
-[~,kB_1] = min([err_an(1,end,2),err_fd(1,end,2),err_cd(1,end,2)]);
-[~,kB_2] = min([err_an(2,end,2),err_fd(2,end,2),err_cd(2,end,2)]);
-fprintf("Most accurate method for each zero:\n")
-fprintf("xA_1 = %f\n",kA_1);
-fprintf("xA_2 = %f\n",kA_2);
-fprintf("xB_1 = %f\n",kB_1);
-fprintf("xB_2 = %f\n",kB_2);
+[~,kA_1] = min([max(err_fd(1,end,:)),max(err_cd(1,end,:))]);
+[~,kA_2] = min([max(err_fd(2,end,:)),max(err_cd(2,end,:))]);
+
 
 % Plots
 figure()
@@ -202,17 +197,24 @@ legend("Analytic","RK4_{h_1}","RK4_{h_2}","RK4_{h_3}","RK4_{h_4}")
 title('Analytical and RK4 solutions'); xlabel('t [s]'); ylabel('x(t)');
 
 figure()
-plot(t_RK2{1},err_RK2{1}, t_RK2{2},err_RK2{2}, t_RK2{3},err_RK2{3}, t_RK2{4},err_RK2{4})
-hold on
+plot(t_RK2{1},err_RK2{1},'--');
+hold on;
+plot(t_RK2{2},err_RK2{2},'--');
+hold on;
+plot(t_RK2{3},err_RK2{3},'--');
+hold on;
+plot(t_RK2{4},err_RK2{4},'--');
+hold on;
+grid on;
 plot(t_RK4{1},err_RK4{1}, t_RK4{2},err_RK4{2}, t_RK4{3},err_RK4{3}, t_RK4{4},err_RK4{4})
 legend("RK2_{h_1}","RK2_{h_2}","RK2_{h_3}","RK2_{h_4}","RK4_{h_1}","RK4_{h_2}","RK4_{h_3}","RK4_{h_4}");
 title('RK absolute error'); xlabel('t [s]'); ylabel('|x_{analytic}(t) - x_{numeric}|');
-grid on
+ylim([0,1e-2])
 
 figure()
-semilogy(t_cpu(1,:),error(1,:),'-ro');
+loglog(t_cpu(1,:),error(1,:),'-ro');
 hold on
-semilogy(t_cpu(2,:),error(2,:),'-bo');
+loglog(t_cpu(2,:),error(2,:),'-bo');
 grid on;
 title("CPU time vs integration error");
 xlabel("t_{CPU} [s]"); ylabel("\epsilon");
@@ -257,7 +259,12 @@ lambda_3 = 1;
 % Plots
 figure()
 plot(real(h_RK2.*lambda_A),imag(h_RK2.*lambda_A),'b-')
-hold on
+xlabel("Re \{h\lambda\}"); ylabel("Im \{h\lambda\}");
+title("RK2 stability domain")
+grid on
+axis equal
+
+figure()
 plot(real(h_RK4.*lambda_A),imag(h_RK4.*lambda_A),'r-')
 hold on
 plot(real(lambda_3.*H(1)),imag(lambda_3.*H(1)),'pb')
@@ -267,12 +274,13 @@ hold on
 plot(real(lambda_3.*H(3)),imag(lambda_3.*H(3)),'pg')
 hold on
 plot(real(lambda_3.*H(4)),imag(lambda_3.*H(4)),'pk')
-legend('RK2','','RK4','','\lambda_{h = 0.5}','\lambda_{h = 0.2}','\lambda_{h = 0.05}','\lambda_{h = 0.01}')
+legend('','','\lambda_{h = 0.5}','\lambda_{h = 0.2}','\lambda_{h = 0.05}','\lambda_{h = 0.01}')
 xlabel("Re \{h\lambda\}"); ylabel("Im \{h\lambda\}");
+title("RK4 stability domain")
 grid on
 axis equal
 
-save('h_RK4'); % save h_RK4 for exercise 7
+save("h_RK4","h_RK4"); % save h_RK4 for exercise 7
 %% Ex 5
 clearvars; close all; clc;
 
@@ -312,6 +320,10 @@ for j = 1:4
         h_RK4(i,j) = fzero(@(hh) norm(x_an_end(:,i)-(F_RK4(hh,alpha(i)))^(1/hh)*x0,"inf") - tol(j),0.5,options);
     end
 end
+
+h_RK1 = 1./round(1./h_RK1);
+h_RK2 = 1./round(1./h_RK2);
+h_RK4 = 1./round(1./h_RK4);
 
 % func evaluation vs tol (alpha = pi)
 h_RK1_pi = h_RK1(end,:);    % RK1 h for alpha = pi
@@ -421,7 +433,7 @@ axis equal
 title('Stability region (BI2)'); xlabel("Re \{h\lambda\}"); ylabel("Im \{h\lambda\}");
 legend('\theta = 0.1','', '\theta = 0.3','', '\theta = 0.4','', '\theta = 0.7','', '\theta = 0.9','')
 
-save('lambda_A'); save('h_BI2');  % save lambda_A and h_BI2 for exercise 7
+save("lambda_A","lambda_A"); save("h_BI2","h_BI2");  % save lambda_A and h_BI2 for exercise 7
 %% Ex 7
 clearvars; close all; clc;
 
@@ -429,9 +441,9 @@ clearvars; close all; clc;
 
 B = [-180.5, 219.5; 179.5, -220.5];     % given matrix
 lambda = eig(B);                        % B eigenvalues
+x0 = [1,1]';                            % initial value
 odefun = @(t,x) B*x;                    % given equation
 an_fun = @(t) expm(B*t)*x0;             % analytic solution
-x0 = [1,1]';                            % initial value
 h = 0.1;                                % step size
 tspan = [0,5];                          % time interval
 theta = 0.1;                            % given theta
@@ -442,14 +454,14 @@ x_an = zeros(length(tspan),2)';
 % load previously calculated stability regions (BI2 and RK4)
 load('lambda_A'); load('h_BI2'); load('h_RK4');
 
-% analytic solution
-for i = 1:length(tspan)
-    x_an(:,i) = an_fun(tspan(i));
-end
-
 % numerical integration
-[~,x_RK4] = RK4(odefun,tspan,x0,h);
+[t,x_RK4] = RK4(odefun,tspan,x0,h);
 [~,x_BI2] = BI2(B,tspan,x0,h,theta);
+
+% analytic solution
+for i = 1:length(t)
+    x_an(:,i) = an_fun(t(i));
+end
 
 % absolute errors
 errorRK4 = abs(x_an - x_RK4); 
@@ -461,24 +473,24 @@ plot(real(h_RK4.*lambda_A),imag(h_RK4.*lambda_A),'r-')
 hold on;
 plot(real(h_BI2(:,1).*lambda_A),imag(h_BI2(:,1).*lambda_A),'b')
 hold on
-plot(real(lambda(1).*h),imag(lambda(1).*h),'o')
+plot(real(lambda(1).*h),imag(lambda(1).*h),'p')
 hold on
-plot(real(lambda(2).*h),imag(lambda(2).*h),'o')
-grid on; axis equal;
-xlabel("Re \{h\lambda\}"); ylabel("Im \{h\lambda\}"); 
+plot(real(lambda(2).*h),imag(lambda(2).*h),'p')
+grid on; 
+xlabel("Re \{h\lambda\}"); ylabel("Im \{h\lambda\}"); ylim([-10 10]);
 title("Eigenvalue location");
 legend('RK4','','BI2_{0.1}','','\lambda_1','\lambda_2')
 
 figure()
 subplot(2,1,1)
 title("Numerical and analytical results comparison");
-plot(tspan,x_an(1,:), tspan,x_RK4(1,:), tspan,x_BI2(1,:))
+plot(t,x_an(1,:), t,x_RK4(1,:), t,x_BI2(1,:))
 xlim([-1 5]); ylim([-2 2]);
 xlabel("Time [s]"); ylabel("x(t)"); title("");
 grid on;
 legend('Analytical', 'RK4' , 'BI2_{0.1}')
 subplot(2,1,2)
-plot(tspan,x_an(2,:), tspan,x_RK4(2,:), tspan,x_BI2(2,:))
+plot(t,x_an(2,:), t,x_RK4(2,:), t,x_BI2(2,:))
 xlim([-1 5]); ylim([-1 3]);
 xlabel("Time [s]"); ylabel("x(t)"); 
 grid on;
@@ -486,13 +498,13 @@ legend('Analytical', 'RK4' , 'BI2_{0.1}')
 
 figure()
 subplot(2,1,1)
-semilogy(tspan,errorBI2(1,:) , tspan,errorRK4(1,:))
+semilogy(t,errorBI2(1,:) , t,errorRK4(1,:))
 grid on;
 legend('BI2', 'RK4');
 xlabel("Time [s]"); ylabel("Error");
 title("x_1 absolute error")
 subplot(2,1,2)
-semilogy(tspan,errorBI2(2,:) , tspan,errorRK4(2,:))
+semilogy(t,errorBI2(2,:) , t,errorRK4(2,:))
 grid on;
 legend('BI2', 'RK4'); 
 xlabel("Time [s]"); ylabel("Error");
@@ -548,13 +560,14 @@ function [x,f_eval,iter] = SecantMethod(fun,a,b,tol)
 % - f_eval: number of function evaluations
 % - iter:   number of iterations
 %
-x = [a;b]; f_eval = 0;
+funA = fun(a); funB = fun(b);
+x = [a;b]; f_eval = 2;
 iter = 0;
 while abs(b-a) > tol
-    funA = fun(a); funB = fun(b);
-    f_eval = f_eval +2;
     c = (a*funB - b*funA)/(funB-funA);
-    a = b; b = c;
+    funC = fun(c); f_eval = f_eval +1;
+    a = b; funA = funB;
+    b = c; funB = funC;
     x = [x;c];
     iter = iter+1;
 end
@@ -590,7 +603,6 @@ while abs(x(end)-x(end-1)) > tol && funA*funB < 0
         a = c;
         funA = funC;
     end
-
     x = [x;c];
     iter = iter+1;
 end
