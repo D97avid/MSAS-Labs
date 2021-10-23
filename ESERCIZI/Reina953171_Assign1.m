@@ -62,18 +62,18 @@ f = @(xx) [xx(1)^2 - xx(1) - xx(2); ...     % given function
           (xx(1)^2)/16 + xx(2)^2 - 1];
 
 % inverse of Jacobian (analytic)
-invJ_an = @(xx,x0) inv([2*xx(1) - 1, -1; 1/8 * xx(1), 2*xx(2)]);
+invJ_an = @(xx) inv([2*xx(1) - 1, -1; 1/8 * xx(1), 2*xx(2)]);
 
 % size of perturbation
-epsilon = @(x0) max(sqrt(eps), sqrt(eps)*abs(x0));
+epsilon = @(xx) max(sqrt(eps), sqrt(eps)*abs(xx));
 
 % inverse of Jacobian (forward differences)
-invJ_fd = @(xx,x0) inv([(f(xx+[epsilon(x0(1)); 0])-f(xx))/epsilon(x0(1)), ...
-                     (f(xx+[0; epsilon(x0(2))])-f(xx))/epsilon(x0(2))]);
+invJ_fd = @(xx) inv([(f(xx+[epsilon(xx(1)); 0])-f(xx))/epsilon(xx(1)), ...
+                     (f(xx+[0; epsilon(xx(2))])-f(xx))/epsilon(xx(2))]);
 
 % inverse of Jacobian (central differences)
-invJ_cd = @(xx,x0) inv([(f(xx+[epsilon(x0(1)); 0])-f(xx-[epsilon(x0(1)); 0]))/2/epsilon(x0(1)), ...
-                     (f(xx+[0; epsilon(x0(2))])-f(xx-[0; epsilon(x0(2))]))/2/epsilon(x0(2))]);
+invJ_cd = @(xx) inv([(f(xx+[epsilon(xx(1)); 0])-f(xx-[epsilon(xx(1)); 0]))/2/epsilon(xx(1)), ...
+                     (f(xx+[0; epsilon(xx(2))])-f(xx-[0; epsilon(xx(2))]))/2/epsilon(xx(2))]);
 
 % Initialization
 N = 1e4;                    % Number of repetitions to obtain an average computational time value 
@@ -280,6 +280,23 @@ title("RK4 stability domain")
 grid on
 axis equal
 
+figure()
+plot(real(h_RK2.*lambda_A),imag(h_RK2.*lambda_A),'b-')
+hold on
+plot(real(h_RK4.*lambda_A),imag(h_RK4.*lambda_A),'r-')
+hold on
+plot(real(lambda_3.*H(1)),imag(lambda_3.*H(1)),'pb')
+hold on
+plot(real(lambda_3.*H(2)),imag(lambda_3.*H(2)),'pm')
+hold on
+plot(real(lambda_3.*H(3)),imag(lambda_3.*H(3)),'pg')
+hold on
+plot(real(lambda_3.*H(4)),imag(lambda_3.*H(4)),'pk')
+legend('RK2','','RK4','','\lambda_{h = 0.5}','\lambda_{h = 0.2}','\lambda_{h = 0.05}','\lambda_{h = 0.01}')
+xlabel("Re \{h\lambda\}"); ylabel("Im \{h\lambda\}");
+grid on
+axis equal
+
 save("h_RK4","h_RK4"); % save h_RK4 for exercise 7
 %% Ex 5
 clearvars; close all; clc;
@@ -320,10 +337,6 @@ for j = 1:4
         h_RK4(i,j) = fzero(@(hh) norm(x_an_end(:,i)-(F_RK4(hh,alpha(i)))^(1/hh)*x0,"inf") - tol(j),0.5,options);
     end
 end
-
-h_RK1 = 1./round(1./h_RK1);
-h_RK2 = 1./round(1./h_RK2);
-h_RK4 = 1./round(1./h_RK4);
 
 % func evaluation vs tol (alpha = pi)
 h_RK1_pi = h_RK1(end,:);    % RK1 h for alpha = pi
@@ -626,7 +639,7 @@ x = [x0, zeros(2,iter-1)];
 F = x; F(:,1) = fun(x0);
 
 for i = 1:iter-1    
-    x(:,i+1) = x(:,i) - invJ(x(:,i),x0) * fun(x(:,i));
+    x(:,i+1) = x(:,i) - invJ(x(:,i)) * fun(x(:,i));
     F(:,i+1) = fun(x(:, i+1));
 end
 end
