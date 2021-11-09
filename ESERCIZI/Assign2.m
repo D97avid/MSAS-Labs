@@ -44,126 +44,89 @@ xlim([t(1) t(end)])
 
 %% Exercise 2
 clearvars; close all; clc;
+
 % Data
-fluid.rho = 890;
+data.accum.V = 0.01;    %[m^3]
+data.accum.k = 1.12;    %[-]
 
-accum.V = 0.010; % m^3
-N.pi = 2.5*1e5;  % Pa
-N.gamma = 1.2;
-N.p0 = 21*1e5;   % Pa
+data.gas.pi = 2.5e6;  %[Pa]
+data.gas.gamma = 1.2;   %[-]
+data.gas.p0 = 21e6;   %[Pa]
+data.gas.V0 = data.accum.V * data.gas.pi/data.gas.p0;
 
-accum.k = 1.12;
-CV.k = 2;
+data.fluid.rho = 890;
+data.fluid.V0 = data.accum.V - data.gas.V0;
+data.fluid.m = data.fluid.rho*data.fluid.V0;
+data.fluid.p0 = data.gas.p0;
 
-B23.D = 0.018;   % m
-B23.L = 2;       % m
-B23.f = 0.032;
+%accum.p = data.fluid.p0*(data.fluid.V0/(data.accum.V-data.fluid.V0))^data.gas.gamma;           %  quale dei due???
+data.accum.p = data.fluid.p0*(data.fluid.V0/(data.accum.V))^data.gas.gamma;
+data.CV.k = 2;              %[-]
 
-dist.k = 12;
-dist.D = 0.005;  % m
-
-piston.Dc = 0.05;  % m 
-piston.Dr = 0.022; % m
-piston.m = 2;
-piston.x_max = 0.200; % m
-piston.k = 120000; % N/m
-piston.F0 = 1000; % N
-piston.F = @(x) piston.F0 + piston.k*x;
-
-B67.D = 0.018;  % m
-B67.L = 15;     % m
-B67.f = 0.035;
-
-tank.p = 0.1e6;
-tank.V0 = 0.01; % m^3
-tank.k = 1.12;
-
-t0 = 0;
-t1 = 1;
-t2 = 1.5;
-tF = 3;
-tspan = linspace(t0, tF,1e3);
-
-% Starting conditions
-N.V0 = accum.V * N.pi/N.p0;
-fluid.V0 = accum.V - N.V0;
-fluid.m = fluid.rho*fluid.V0;
-fluid.p0 = N.p0;
-
-P_A = fluid.p0*(fluid.V0/(accum.V-fluid.V0))^N.gamma;
+data.B23.D = 0.018;         %[m]
+data.B23.L = 2;             %[m]
+data.B23.f = 0.032;         %[-]
+data.B23.A = pi*data.B23.D^2/4;
 
 
-% Branch 2-3
-B23.Q = @Q_A;
-B23.A = pi*B23.D^2/4;
-B23.v = @(t) B23.Q(t)/B23.A;
-B23.D_hyd = 4*B23.A/B23.D/pi;
+data.dist.k = 12;           %[-]
+data.dist.D = 0.005;        %[m]
 
-% Distributor
-dist.v = zeros(length(tspan),1);
-dP_dist = dist.v;
-for i = 1:length(tspan)
-    z(i) = ramp(tspan(i),t1,t2);
-    if z(i) > 0
-        dist.v(i) = B23.Q(tspan(i),accum.V,fluid.V0)./((0.5*(0.5*dist.D)^2 * (2*pi*z(i) - sin(2*pi*z(i)))));
-        dP_dist(i) = 0.5*dist.k*fluid.rho*dist.v(i)^2;
-    end
-end
+data.piston.Dc = 0.05;      %[m] 
+data.piston.Dr = 0.022;     %[m]
+data.piston.m = 2;          %[kg]
+data.piston.x_max = 0.200;  %[m]
+data.piston.k = 120e3;      %[N/m]
+data.piston.F0 = 1e3;       %[N]
+data.piston.F = @(x) data.piston.F0 + data.piston.k*x;
+data.piston.A1 = pi*data.piston.Dc^2/4;
+data.piston.A2 = data.piston.A1 - pi*data.piston.Dr^2/4; 
 
-% Branch 6-7
-% B67.Q = Q_B; % aaaaaa
-% B67.A = pi*B67.D^2/4;
-% B67.v = B67.Q/B67.A;
-% B67.D_hyd = 4*B67.A/B67.D/pi;
+data.B67.D = 0.018;  %[m]
+data.B67.L = 15;     %[m]
+data.B67.f = 0.035;  %[-]
+data.B67.A = pi*data.B67.D^2/4;
 
-% dP_BA2 = 0.5*accum.k*fluid.rho*B23.v^2 + 0.5*CV.k*fluid.rho*B23.v^2;
-% dP_B23 = 0.5*B23.f*B23.L/B23.D_hyd*fluid.rho*B23.v^2;
-% dP_B67 = 0.5*B67.f*B67.L/B67.D_hyd*fluid.rho*B67.v^2;
-% dP_B7T = 0.5*tank.k*fluid.rho*B67.v^2;
+data.tank.p = 0.1e6; %[Pa]
+data.tank.V0 = 0.001; %[m^3]
+data.tank.k = 1.12;  %[-]
 
-piston.A1 = pi*piston.Dc^2/4;
-piston.A2 = piston.A1 - pi*piston.Dr^2/4; 
+data.t0 = 0;   %[s]
+data.t1 = 1;   %[s]
+data.t2 = 1.5; %[s]
+data.tF = 3;   %[s]
+tspan = linspace(data.t0, data.tF,1e2);
 
-beta = 1.2e6; % [Pa] COPIATO DA TOPPUTO
 
-% x = [x,v,P_4,P_5,Q_A,Q_B]
+% alpha = @(t) 2*pi*ramp(t,t1,t2);
+% dP_A4 = @(t,QA) 0.5*fluid.rho*QA*abs(QA)*((accum.k+CV.k+B23.f*B23.L/B23.D)/B23.A^2 + dist.k/(dist.D^2/8*(alpha(t)-sin(alpha(t))))^2);
+% dP_T5 = @(t,QB) 0.5*fluid.rho*QB*abs(QB)*((tank.k+B67.f*B67.L/B67.D)/B67.A^2 + dist.k/(dist.D^2/8*(alpha(t)-sin(alpha(t))))^2);
+% ode definition
+% x = [x,v,V_acc,V_tank]
 odefun = @(t,x) [x(2);
-                 (x(3)*piston.A1 - x(4)*piston.A2 - piston.F(x(1)))/piston.m;
-                 beta/piston.A1/x(1) * (Q_A(t,accum.V,fluid.V0)-piston.A1*x(2));
-                 beta/piston.A2/(piston.x_max-x(1)) * (-x(6)-piston.A2*x(2));
-                 0;
-                 piston.A2 * x(2)];
+                 ((data.accum.p-dP_A4(t,data.piston.A1*x(2),data))*data.piston.A1 - (data.tank.p+dP_5T(t,data.piston.A2*x(2),data))*data.piston.A2 - data.piston.F(x(1)))/data.piston.m;
+                 data.piston.A1*x(2);
+                 data.piston.A2*x(2)];
 
-x0 = [0.001; 0; 0; 0; 0; 0];
+x0 = [0; 0; data.accum.V; data.tank.V0];
 [t,x] = ode45(odefun, tspan, x0); 
 
-
-% for i = 1:length(t)
-%     if x(i,1) > piston.x_max
-%         x(i,:) = x(k,:);
-%     else
-%         k = i;
-%     end
-% end
-
-
-
-P = zeros(length(t),8);
-
-% P(:,1) = P_A;
-% P(:,2) = P(:,1) - dP_A2 - dP_CV;
-% P(:,3) = P(:,2) - dP_B23;
-% P(:,4) = P(:,3) - dP_dist;
-% P(:,5) = P(:,4);
-% P(:,6) = P(:,5) - 0.5*dist.k*fluid.rho*(x(:,4)./dist.A).^2;
-% P(:,7) = P(:,6) - 0.5*B67.f*B67.L/B67.D_hyd*fluid.rho*(x(:,4)./B67.A).^2;
-% P(:,8) = P(:,7) - 0.5*tank.k*fluid.rho*(x(:,4)./B67.A).^2;
+QA = data.piston.A1*x(33,2)*ones(length(t),1);
+dP_A4_vect = dP_A4(t,QA,data);
+QB = data.piston.A2*x(33,2)*ones(length(t),1);
+dP_5T_vect = dP_5T(t,QB,data);
 
 figure()
-plot(t,x(:,4))
+plot(t,x(:,1))
 grid on
 
+figure()
+plot(t,dP_5T_vect)
+grid on
 
+figure()
+plot(t,dP_A4_vect)
+grid on
 %% Exercise 3
 clearvars; close all; clc;
 R_1 = 1000;
@@ -303,12 +266,30 @@ for i = 1:length(t)
 end
 end
 
-function Q = Q_A(t,V,V0)
-t1 = 1; tF = 3;
-    if t <= t1
-        Q = 0;
-    elseif t > t1 
-        Q = (V-V0)/(tF-t1); 
+function dP = dP_A4(t,QA,data)
+dP = zeros(length(t),1);
+alpha = 2*acos(1-ramp(t,data.t1,data.t2)*2);
+%alpha = 2*pi*ramp(t,data.t1,data.t2);
+tol = deg2rad(15);
+for i = 1:length(t)
+    if alpha(i) > tol
+        dP(i) = 0.5*data.fluid.rho*QA(i)*abs(QA(i))*((data.accum.k+data.CV.k+data.B23.f*data.B23.L/data.B23.D)/data.B23.A^2 + data.dist.k/(data.dist.D^2/8*(alpha(i)-sin(alpha(i))))^2);
+    else
+        dP(i) = 0;
     end
 end
+end
 
+function dP = dP_5T(t,QB,data)
+dP = zeros(length(t),1);
+alpha = 2*acos(1-ramp(t,data.t1,data.t2)*2);
+tol = deg2rad(15);
+for i = 1:length(t)
+    if alpha(i) > tol
+        dP(i) = 0.5*data.fluid.rho*QB(i)*abs(QB(i))*((data.tank.k+data.B67.f*data.B67.L/data.B67.D)/data.B67.A^2 + data.dist.k/(data.dist.D^2/8*(alpha(i)-sin(alpha(i))))^2);
+    else
+        dP(i) = 0;
+
+    end
+end
+end
