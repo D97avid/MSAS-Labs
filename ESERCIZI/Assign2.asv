@@ -205,12 +205,12 @@ tspan = [0:60/1e3:60];
 
 Ti = @(t) Ti_F*ramp(t,0,1);
 
-l = [0.001 0.01 0 0.01 0.001];
-k = [7.5 0.5 200 0.5 5];
-c = [0 10 0 10 0];
-rho = [1000 1000 1000 1000 1000];
+l = [0.01 0.1 0.001 0.05 0.01];
+k = [390 390 390 7.82 390];
+c = [0 376.12 0 477.29 0];
+rho = [8960 8960 8960 7260 8960];
 
-A = 0.5^2;
+A = 0.1;
 R = zeros(1,5);
 R(1) = l(1)./k(1)./A;
 R(3) = 1/k(3);
@@ -328,7 +328,7 @@ P_3 = P_2 - 0.5*data.fluid.rho*Q1*abs(Q1)*data.B23.f*data.B23.L/data.B23.D/data.
 if alpha > tol
     P_4 = P_A - 0.5*data.fluid.rho*Q1*abs(Q1)*((data.accum.k+data.CV.k+data.B23.f*data.B23.L/data.B23.D)/data.B23.A^2 + data.dist.k/(data.dist.D^2/8*(alpha-sin(alpha)))^2);
 else 
-    P_4 = 0;
+    P_4 = P_A;
 end
 
 P_7 = P_T + 0.5*data.fluid.rho*Q2*abs(Q2)*data.tank.k/data.B67.A^2;
@@ -337,7 +337,7 @@ P_6 = P_7 + 0.5*data.fluid.rho*Q2*abs(Q2)*data.B67.f*data.B67.L/data.B67.D/data.
 if alpha > tol
     P_5 = P_T + 0.5*data.fluid.rho*Q2*abs(Q2)*((data.tank.k+data.B67.f*data.B67.L/data.B67.D)/data.B67.A^2 + data.dist.k/(data.dist.D^2/8*(alpha-sin(alpha)))^2);
 else
-    P_5 = 0;
+    P_5 = P_T;
 end
 
 paramout = [P_A, P_2, P_3, P_4, P_5, P_6, P_7, P_T, Q1, Q2, rad2deg(alpha), data.piston.F(x)];
