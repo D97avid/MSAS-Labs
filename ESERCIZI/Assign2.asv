@@ -328,7 +328,7 @@ P_3 = P_2 - 0.5*data.fluid.rho*Q1*abs(Q1)*data.B23.f*data.B23.L/data.B23.D/data.
 if alpha > tol
     P_4 = P_A - 0.5*data.fluid.rho*Q1*abs(Q1)*((data.accum.k+data.CV.k+data.B23.f*data.B23.L/data.B23.D)/data.B23.A^2 + data.dist.k/(data.dist.D^2/8*(alpha-sin(alpha)))^2);
 else 
-    P_4 = P_A;
+    P_4 = 0;
 end
 
 P_7 = P_T + 0.5*data.fluid.rho*Q2*abs(Q2)*data.tank.k/data.B67.A^2;
@@ -337,7 +337,7 @@ P_6 = P_7 + 0.5*data.fluid.rho*Q2*abs(Q2)*data.B67.f*data.B67.L/data.B67.D/data.
 if alpha > tol
     P_5 = P_T + 0.5*data.fluid.rho*Q2*abs(Q2)*((data.tank.k+data.B67.f*data.B67.L/data.B67.D)/data.B67.A^2 + data.dist.k/(data.dist.D^2/8*(alpha-sin(alpha)))^2);
 else
-    P_5 = P_T;
+    P_5 = 0;
 end
 
 paramout = [P_A, P_2, P_3, P_4, P_5, P_6, P_7, P_T, Q1, Q2, rad2deg(alpha), data.piston.F(x)];
