@@ -12,8 +12,9 @@ Data.T_0 = 0.1;
 Data.f = 100;
 Data.tspan = 0:1/Data.f:10;
 
-load('samples.txt');
-
+fid = fopen('samples.txt','rt');
+samples = cell2mat(textscan(fid, '%f%f%f', 'MultipleDelimsAsOne',true, 'Delimiter','[;', 'HeaderLines',1));
+fclose(fid);
 x0 = [0; 0; 0; 0];
 
 KB0 = [1;1];
