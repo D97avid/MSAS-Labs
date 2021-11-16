@@ -16,20 +16,22 @@ k_guess = 1; b_guess = 1;       % Guessed k and b
 
 % Load file samples.txt:
 fid = fopen('samples.txt','rt');
-samples = cell2mat(textscan(fid, '%f%f%f', 'MultipleDelimsAsOne',true, 'Delimiter','[;', 'HeaderLines',1));
+Data.samples = cell2mat(textscan(fid, '%f%f%f', 'MultipleDelimsAsOne',true, 'Delimiter','[;', 'HeaderLines',1));
 fclose(fid);
 
 % Find system response for guessed k and b:
 [acc_guess,t_guess,~] = acceleration(x0,Data,k_guess,b_guess);
 
+e = error_acc(x0,Data,1,1)
+
 % Find k and b such that parametric errors are minimized:
-fun = @(KB) max(norm(acceleration(x0,Data,KB(1),KB(2)) - samples(:,2:3)));  % Function to minimize (maximum absolute error)
+fun = @(KB) error_acc(x0,Data,KB(1),KB(2));  % Function to minimize (maximum absolute error)
 
 KB0 = [k_guess;b_guess];                                                    % Initial guess vector for fmincon
-[KB] = fmincon(fun,KB0,[],[]);
+[KB_opt] = fminunc(@(KB) error_acc(x0,Data,KB(1),KB(2)),KB0);
 
-k_opt = KB(1);
-b_opt = KB(2);
+k_opt = KB_opt(1);
+b_opt = KB_opt(2);
 fprintf("k_opt = %.4f\n",k_opt); fprintf("b_opt = %.4f\n",b_opt);
 
 % Find system response for guessed k_opt and b_opt:
@@ -45,9 +47,9 @@ xlabel('$Time \,\, [s]$','Interpreter','latex'); ylabel('$\dot\theta \,\, [rad/s
 
 figure()
 subplot(1,2,1)
-plot(samples(:,1),samples(:,2),"LineWidth",2)
+plot(Datasamples(:,1),Data.samples(:,2),"LineWidth",2)
 hold on
-plot(samples(:,1),samples(:,3),"LineWidth",2)
+plot(Data.samples(:,1),Data.samples(:,3),"LineWidth",2)
 grid on; legend('$\dot\theta_1$','$\dot\theta_2$','Interpreter','latex')
 title('Samples','Interpreter','latex');
 xlabel('$Time \,\, [s]$','Interpreter','latex'); ylabel('$\dot\theta \,\, [rad/s^2]$','Interpreter','latex');
@@ -119,7 +121,7 @@ data.tF = 3;                                              %[s] Simulation end
 
 % Integration until event (piston position = maximum stroke)
 % State vector: x = [x, v, V_accumulator, V_tank]
-tspan = linspace(data.t0, data.tF,1e3)';                  % Time vector
+tspan = linspace(data.t0, data.tF,2e3)';                  % Time vector
 x0 = [0; 0; data.fluid.V0; data.tank.V0];                 % Initial conditions
 options_BE = odeset('event', @press_event); 
 [t_BE,x_BE,t_event,x_event,~] = ode23s(@pressurization_BE, tspan, x0, options_BE,data); 
@@ -140,6 +142,7 @@ x(i+1:end,:) = x(i+1:end,:) .*x_PE;
 param = ones(length(tspan),width(param_BE));
 param(1:i,:) = param_BE;
 param(i+1:end,:) = param(i+1:end,:).*param_BE(end,:);
+% param = [P_A, P_2, P_3, P_4, P_5, P_6, P_7, P_T, Q1, Q2, alpha, A_dist, data.piston.F(x)];
 
 % Plots:
 figure()
@@ -252,8 +255,8 @@ odefun_1 = @(t,x) [x(2);
 v = @(t) sin(2*pi*f*t)*atan(t);
 v_dot = @(t) cos(2*pi*f*t)*(2*pi*f)*atan(t) + sin(2*pi*f*t)/(1+t^2);
 
-odefun_2 = @(t,x) [x(2);...
-                   (-x(1)-x(2)*(L/R_1 + C*R_2) - v(t) - v_dot(t)*L/R_1)/(L*C+L*C*R_2/R_1)];
+odefun_2 = @(t,x) [x(2);
+                   (-x(1)-x(2)*(L/R_1 + C*R_2) + v(t) + v_dot(t)*L/R_1)/(L*C+L*C*R_2/R_1)];
 
 [t_2,x_2] = ode45(odefun_2,tspan,x0);
 
@@ -278,16 +281,16 @@ T_0 = 20;                           %[°C] Initial temperature (all nodes)
 Ti_F = 1000;                        %[°C] Final temperature (internal node)
 To_F = 20;                          %[°C] Final temperature (outer node)
 tspan = 0:60/1e3:60;                %[s] Time vector
-l = [0.01 0.1 0.001 0.05 0.01];     %[m] Layers thickness vector
-k = [390 390 0 7.82 390];           %[W/m/°C] Thermal conductivity
-c = [0 376.12 0 477.29 0];          %[J/kg/°C]  Specific heat
+l = [0.01 0.1 0 0.05 0.01];     %[m] Layers thickness vector
+k = [400 400 0 7.8 400];           %[W/m/°C] Thermal conductivity
+c = [0 385 0 480 0];          %[J/kg/°C]  Specific heat
 rho = [8960 8960 8960 7260 8960];   %[kg/m^3] Layers density
 A = 0.1;                            %[m^2] Layers area           
 C = A*rho.*c.*l;                    %[J/°C] Thermal capacitance
 
 % Contact resistances computation
 R = l./k./A; 
-R(3) = 1/390;
+R(3) = 2.5e-5;
 
 % Internal node temperature profile:
 Ti = @(t) (Ti_F-T_0)*ramp(t,0,1)+T_0;
@@ -297,7 +300,7 @@ dTdt_1 = @(t,x) [( (Ti(t)-x(1))/(R(1)+R(2)/2)        - (x(1)-x(2))/(R(2)/2+R(4)/
                  ( (x(1)-x(2)) /(R(2)/2+R(4)/2+R(3)) - (x(2)-To_F)  /(R(4)/2+R(5))        )/C(4)];
 % x = [T_B, T_D];       % state vector
 x0_1 = T_0*ones(1,2);   % initial conditions
-[t_1,T_1] = ode45(dTdt_1,tspan,x0_1);
+[t_1,T_1] = ode23s(dTdt_1,tspan,x0_1);
 
 % Nodes array:
 Nodes_1 = zeros(length(t_1),7);
@@ -314,12 +317,12 @@ end
 
 % Case #2: two internal nodes for layers B and D
 dTdt_2 = @(t,x) [( (Ti(t)-x(1))/(R(1)+R(2)/3)        - (x(1)-x(2))/(R(2)/3)             )/C(2)/2;
-                 ( (x(1)-x(2))/(R(2)/3)              - (x(2)-x(3))/(R(2)/3+R(3)+R(4)/3) )/C(2)/2;
+                 ( (x(1)-x(2))/(R(2)/3)              - (x(2)-x(3))/(R(2)/3+R(3)/2+R(4)/3))/C(2)/2;
                  ( (x(2)-x(3))/(R(2)/3+R(3)+R(4)/3)  - (x(3)-x(4))/(R(4)/3)             )/C(4)/2;
-                 ( (x(3)-x(4))/(R(4)/3)              - (x(4)-To_F)  /(R(4)/3+R(5))        )/C(4)/2 ];
+                 ( (x(3)-x(4))/(R(4)/3)              - (x(4)-To_F)/(R(4)/3+R(5))        )/C(4)/2];
 % x = [T_B1, T_B2, T_D1, T_D2];   % state vector
 x0_2 = T_0*ones(1,4);             % initial conditions
-[t_2,T_2] = ode45(dTdt_2,tspan,x0_2);
+[t_2,T_2] = ode23s(dTdt_2,tspan,x0_2);
 
 % Nodes array:
 Nodes_2 = zeros(length(t_2),9);
@@ -380,6 +383,12 @@ for i = 1:length(t)
     acc(i,1) = k*(x(i,2)-x(i,1))/Data.J_1;
     acc(i,2) = (-k*(x(i,2)-x(i,1)) - sign(x(i,4))*b*(x(i,4))^2 + Data.T_0)/Data.J_2;
 end
+end
+
+function e = error_acc(x0,Data,k,b)
+
+e = max(max(abs(acceleration(x0,Data,k,b) - Data.samples(:,2:3))));
+
 end
 
 function z = ramp(t,t1,t2)
